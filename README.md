@@ -5,6 +5,7 @@
 ## Возможности
 
 - Авторизация по OTP (код в WhatsApp, возврат пользователя если зарегистрирован)
+- Тестовые пользователи Samat/Nurik (77000000000, 77000000001, код 0000)
 - Регистрация, редактирование и удаление пользователей (пассажиры и водители)
 - Регистрация и редактирование автомобилей (только для водителей)
 - Отправка OTP-кодов через WhatsApp (Green API)
@@ -23,7 +24,7 @@ taxi/
 ├── pkg/
 │   ├── whatsapp/            # Green API (Messenger interface)
 │   └── validator/           # Валидация (телефон)
-├── migrations/               # SQL-миграции
+├── migrations/               # SQL-миграции (001 init, 002 otp, 003 seed)
 ├── scripts/create_db.go      # Создание БД taxi
 ├── docs/API.md               # Документация API
 └── docker-compose.yml        # PostgreSQL для разработки
@@ -46,6 +47,8 @@ taxi/
 
 4. Проверить: `curl http://localhost:8080/health`
 
+5. Тестовый вход: `curl -X POST http://localhost:8080/api/auth/verify -H "Content-Type: application/json" -d '{"phone":"77000000000","code":"0000"}'`
+
 ## Переменные окружения
 
 | Переменная | Описание |
@@ -57,6 +60,7 @@ taxi/
 | `USE_MOCK_WHATSAPP` | `true` — логировать вместо отправки |
 | `PORT` | Порт сервера (по умолчанию 8080) |
 | `MIGRATIONS_DIR` | Путь к миграциям (по умолчанию `migrations`) |
+| `DEBUG_MODE` | `true` — тестовые credentials для pre-fill формы |
 
 ## Документация API
 

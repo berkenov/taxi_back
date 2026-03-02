@@ -9,6 +9,7 @@
 3. [Эндпоинты](#эндпоинты)
    - [Health Check](#1-health-check)
    - [Авторизация (OTP)](#2-авторизация-otp)
+   - [Debug credentials](#2c-debug-credentials)
    - [Отправка OTP (legacy)](#2b-отправка-otp-legacy)
    - [Регистрация пользователя](#3-регистрация-пользователя)
    - [Получить пользователя](#4-получить-пользователя)
@@ -49,6 +50,7 @@ http://localhost:8080
 | `USE_MOCK_WHATSAPP` | `true` — логировать вместо отправки | `false` |
 | `PORT` | Порт сервера | `8080` |
 | `MIGRATIONS_DIR` | Путь к папке миграций | `migrations` |
+| `DEBUG_MODE` | `true` — GET /api/debug/credentials возвращает тестовые phone/code | `false` |
 
 ---
 
@@ -122,6 +124,8 @@ Content-Type: application/json
 | 77000000000 | Samat | passenger |
 | 77000000001 | Nurik | driver |
 
+**DEBUG_MODE:** при `DEBUG_MODE=true` эндпоинт `GET /api/debug/credentials` возвращает `{"phone":"77000000000","code":"0000"}` для pre-fill формы входа.
+
 **Примеры:**
 ```bash
 # 1. Запросить код (придёт в WhatsApp)
@@ -133,6 +137,11 @@ curl -X POST http://localhost:8080/api/auth/send-otp \
 curl -X POST http://localhost:8080/api/auth/verify \
   -H "Content-Type: application/json" \
   -d '{"phone":"77001234567","code":"1234"}'
+
+# Тестовый вход (Samat, код 0000)
+curl -X POST http://localhost:8080/api/auth/verify \
+  -H "Content-Type: application/json" \
+  -d '{"phone":"77000000000","code":"0000"}'
 ```
 
 ---
@@ -189,6 +198,27 @@ curl -X POST http://localhost:8080/api/send-otp \
   -d '{"phone":"77001234567","code":"12"}'
 # 400 Code must be 4 digits
 ```
+
+---
+
+### 2c. Debug credentials
+
+При `DEBUG_MODE=true` возвращает тестовые данные для pre-fill формы входа.
+
+**Запрос:**
+```
+GET /api/debug/credentials
+```
+
+**Ответ (200 OK):**
+```json
+{
+  "phone": "77000000000",
+  "code": "0000"
+}
+```
+
+**Ошибки:** 404 (если DEBUG_MODE не включён)
 
 ---
 
@@ -482,6 +512,7 @@ curl -X DELETE http://localhost:8080/api/cars/{car_id}
 | Метод | Путь | Описание |
 |-------|------|----------|
 | GET | `/health` | Проверка сервера |
+| GET | `/api/debug/credentials` | Тестовые phone/code (при DEBUG_MODE=true) |
 | POST | `/api/auth/send-otp` | Запросить код (генерируется сервером) |
 | POST | `/api/auth/verify` | Ввести код, получить пользователя |
 | POST | `/api/send-otp` | Отправка OTP вручную (legacy) |
@@ -532,6 +563,7 @@ cmd/api/main.go          — точка входа
 internal/handler/        — обработчики HTTP
   health.go              — GET /health
   auth.go                — POST /api/auth/send-otp, /api/auth/verify
+  debug.go               — GET /api/debug/credentials
   otp.go                 — POST /api/send-otp (legacy)
   user.go                — CRUD /api/users
   car.go                 — CRUD /api/cars
@@ -574,6 +606,12 @@ pkg/validator/           — валидация (телефон)
 | phone | VARCHAR(20) | PK, номер телефона |
 | code | VARCHAR(4) | 4-значный код |
 | expires_at | TIMESTAMP | Время истечения (5 мин) |
+
+### Seed (миграция 003)
+
+Тестовые пользователи создаются автоматически при первом запуске:
+- **Samat** (77000000000) — пассажир
+- **Nurik** (77000000001) — водитель, Toyota Camry 777 ABC 01
 
 ### Таблица `orders` (архив заказов)
 
