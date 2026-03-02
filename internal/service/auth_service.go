@@ -13,6 +13,14 @@ import (
 
 var ErrInvalidOTP = errors.New("invalid or expired OTP")
 
+// Тестовые номера: код 0000, WhatsApp не вызывается
+var testPhones = map[string]bool{
+	"77000000000": true, // Samat
+	"77000000001": true, // Nurik
+}
+
+const testCode = "0000"
+
 // AuthService handles authentication (OTP flow)
 type AuthService struct {
 	userRepo   *repository.UserRepository
@@ -48,7 +56,9 @@ func (s *AuthService) SendOTP(phone string) error {
 	normalized := validator.NormalizePhone(phone)
 	code := generateCode()
 
-	if err := s.messenger.SendOTP(normalized, code); err != nil {
+	if testPhones[normalized] {
+		code = testCode
+	} else if err := s.messenger.SendOTP(normalized, code); err != nil {
 		return err
 	}
 	return s.otpRepo.Store(normalized, code)
@@ -61,16 +71,23 @@ func (s *AuthService) VerifyOTP(phone, code string) (*models.User, error) {
 	}
 	normalized := validator.NormalizePhone(phone)
 
-	valid, err := s.otpRepo.Verify(normalized, code)
-	if err != nil {
-		return nil, err
+	valid := false
+	if testPhones[normalized] && code == testCode {
+		valid = true
+	} else {
+		var err error
+		valid, err = s.otpRepo.Verify(normalized, code)
+		if err != nil {
+			return nil, err
+		}
 	}
 	if !valid {
 		return nil, ErrInvalidOTP
 	}
 
-	// Delete OTP after successful verification
-	_ = s.otpRepo.Delete(normalized)
+	if !testPhones[normalized] {
+		_ = s.otpRepo.Delete(normalized)
+	}
 
 	user, err := s.userRepo.GetByPhone(normalized)
 	if err != nil {
